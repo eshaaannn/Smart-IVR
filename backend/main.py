@@ -6,7 +6,7 @@ from typing import Dict, Any
 
 from models import ProcessIssueRequest, ProcessIssueResponse, HealthResponse, CallLog
 from config import settings
-from database.supabase_client import supabase_client
+from database.supabase_client import db_client
 from services.language_detection import detect_language
 from services.transcription import transcribe_audio
 from services.classification import classify_issue
@@ -128,7 +128,7 @@ async def process_issue(request: ProcessIssueRequest):
         )
         
         # Log asynchronously (failure won't affect response)
-        await supabase_client.log_call(call_log)
+        await db_client.log_call(call_log)
         
         logger.info(f"Issue processed successfully: {issue_category} -> {routing_to}")
         return response
@@ -161,7 +161,7 @@ async def get_recent_calls(limit: int = 10):
         List of recent call logs
     """
     try:
-        calls = await supabase_client.get_recent_calls(limit)
+        calls = await db_client.get_recent_calls(limit)
         return {
             "count": len(calls),
             "calls": calls

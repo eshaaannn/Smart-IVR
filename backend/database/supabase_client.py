@@ -1,26 +1,64 @@
-from supabase import create_client, Client
+import psycopg2
+from psycopg2.extras import RealDictCursor, Json
 from config import settings
 from models import CallLog
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import logging
+from contextlib import contextmanager
+from urllib.parse import urlparse, unquote
 
 logger = logging.getLogger(__name__)
 
 
-class SupabaseClient:
-    """Supabase client wrapper for database operations."""
+class DatabaseClient:
+    """PostgreSQL database client for Supabase using connection string."""
     
     def __init__(self):
-        """Initialize Supabase client."""
+        """Initialize database connection pool."""
+        self.database_url = settings.database_url
+        if not self.database_url:
+            logger.warning("DATABASE_URL not set. Database operations will fail gracefully.")
+            self.connection_params = None
+        else:
+            # Parse the connection string and decode password
+            try:
+                parsed = urlparse(self.database_url)
+                self.connection_params = {
+                    'host': parsed.hostname,
+                    'port': parsed.port or 5432,
+                    'database': parsed.path.lstrip('/') or 'postgres',
+                    'user': parsed.username or 'postgres',
+                    'password': unquote(parsed.password) if parsed.password else None,
+                }
+                logger.info("Database client initialized with connection string")
+            except Exception as e:
+                logger.error(f"Failed to parse DATABASE_URL: {e}")
+                self.connection_params = None
+    
+    @contextmanager
+    def get_connection(self):
+        """
+        Context manager for database connections.
+        Automatically handles connection closing.
+        """
+        if not self.connection_params:
+            logger.error("DATABASE_URL not configured or invalid")
+            yield None
+            return
+            
+        conn = None
         try:
-            self.client: Client = create_client(
-                settings.supabase_url,
-                settings.supabase_key
-            )
-            logger.info("Supabase client initialized successfully")
+            conn = psycopg2.connect(**self.connection_params)
+            yield conn
+            conn.commit()
         except Exception as e:
-            logger.error(f"Failed to initialize Supabase client: {e}")
-            raise
+            if conn:
+                conn.rollback()
+            logger.error(f"Database connection error: {e}")
+            yield None
+        finally:
+            if conn:
+                conn.close()
     
     async def log_call(self, call_log: CallLog) -> Optional[Dict[str, Any]]:
         """
@@ -32,27 +70,49 @@ class SupabaseClient:
         Returns:
             Inserted record or None on failure
         """
+        if not self.connection_params:
+            logger.warning("Skipping database logging - DATABASE_URL not configured")
+            return None
+            
         try:
-            data = {
-                "audio_url": call_log.audio_url,
-                "detected_language": call_log.detected_language,
-                "transcript": call_log.transcript,
-                "issue_category": call_log.issue_category,
-                "confidence": call_log.confidence,
-                "routed_to": call_log.routed_to,
-                "raw_ai_response": call_log.raw_ai_response
-            }
-            
-            response = self.client.table("call_logs").insert(data).execute()
-            logger.info(f"Call logged successfully: {call_log.issue_category}")
-            return response.data[0] if response.data else None
-            
+            with self.get_connection() as conn:
+                if conn is None:
+                    return None
+                
+                cursor = conn.cursor(cursor_factory=RealDictCursor)
+                
+                query = """
+                    INSERT INTO call_logs 
+                    (audio_url, detected_language, transcript, issue_category, 
+                     confidence, routed_to, raw_ai_response)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    RETURNING *
+                """
+                
+                cursor.execute(query, (
+                    call_log.audio_url,
+                    call_log.detected_language,
+                    call_log.transcript,
+                    call_log.issue_category,
+                    call_log.confidence,
+                    call_log.routed_to,
+                    Json(call_log.raw_ai_response) if call_log.raw_ai_response else None
+                ))
+                
+                result = cursor.fetchone()
+                cursor.close()
+                
+                if result:
+                    logger.info(f"Call logged successfully: {call_log.issue_category}")
+                    return dict(result)
+                return None
+                
         except Exception as e:
             logger.error(f"Failed to log call: {e}")
             # Don't raise - logging failure shouldn't break the API
             return None
     
-    async def get_recent_calls(self, limit: int = 10) -> list:
+    async def get_recent_calls(self, limit: int = 10) -> List[Dict[str, Any]]:
         """
         Get recent call logs.
         
@@ -62,19 +122,58 @@ class SupabaseClient:
         Returns:
             List of call logs
         """
+        if not self.connection_params:
+            logger.warning("Skipping database query - DATABASE_URL not configured")
+            return []
+            
         try:
-            response = self.client.table("call_logs")\
-                .select("*")\
-                .order("created_at", desc=True)\
-                .limit(limit)\
-                .execute()
-            
-            return response.data if response.data else []
-            
+            with self.get_connection() as conn:
+                if conn is None:
+                    return []
+                
+                cursor = conn.cursor(cursor_factory=RealDictCursor)
+                
+                query = """
+                    SELECT * FROM call_logs
+                    ORDER BY created_at DESC
+                    LIMIT %s
+                """
+                
+                cursor.execute(query, (limit,))
+                results = cursor.fetchall()
+                cursor.close()
+                
+                if results:
+                    return [dict(row) for row in results]
+                return []
+                
         except Exception as e:
             logger.error(f"Failed to retrieve calls: {e}")
             return []
+    
+    def test_connection(self) -> bool:
+        """
+        Test database connection.
+        
+        Returns:
+            True if connection successful, False otherwise
+        """
+        try:
+            with self.get_connection() as conn:
+                if conn is None:
+                    return False
+                
+                cursor = conn.cursor()
+                cursor.execute("SELECT 1")
+                result = cursor.fetchone()
+                cursor.close()
+                
+                return result is not None
+                
+        except Exception as e:
+            logger.error(f"Database connection test failed: {e}")
+            return False
 
 
-# Global Supabase client instance
-supabase_client = SupabaseClient()
+# Global database client instance
+db_client = DatabaseClient()
