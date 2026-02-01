@@ -29,10 +29,10 @@ const Button = ({
             whileHover={{ scale: disabled || isLoading ? 1 : 1.02 }}
             whileTap={{ scale: disabled || isLoading ? 1 : 0.98 }}
             className={`
-        relative overflow-hidden rounded-xl transition-colors duration-200 flex items-center justify-center font-medium
+        relative overflow-hidden rounded-2xl transition-all duration-300 flex items-center justify-center font-bold tracking-wide
         ${variants[variant]}
         ${sizes[size]}
-        ${disabled || isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+        ${disabled || isLoading ? 'opacity-50 cursor-not-allowed grayscale' : 'cursor-pointer hover:-translate-y-0.5 active:translate-y-0'}
         ${className}
       `}
             onClick={!disabled && !isLoading ? onClick : undefined}

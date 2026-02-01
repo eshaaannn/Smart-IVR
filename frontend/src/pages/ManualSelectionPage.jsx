@@ -18,10 +18,10 @@ export default function ManualSelectionPage() {
         <AppLayout title="Select Category">
             <PageTransition>
                 <div className="text-center mb-8">
-                    <h2 className="text-xl font-bold text-neutral-900">
+                    <h2 className="text-xl font-bold text-white">
                         Which department do you need?
                     </h2>
-                    <p className="text-neutral-500 text-sm mt-1">
+                    <p className="text-gray-400 text-sm mt-1">
                         Choose the option that best describes your issue
                     </p>
                 </div>
@@ -32,13 +32,13 @@ export default function ManualSelectionPage() {
                             key={cat.id}
                             delay={index}
                             onClick={() => handleSelect(cat)}
-                            className="p-4 flex flex-col items-center justify-center text-center h-40 hover:scale-105 active:scale-95 transition-transform"
+                            className="p-4 flex flex-col items-center justify-center text-center h-40 hover:scale-105 active:scale-95 transition-transform bg-theme-surface border border-white/5 hover:bg-white/5 cursor-pointer"
                         >
                             <span className="text-4xl mb-3" role="img" aria-label={cat.label}>
                                 {cat.icon}
                             </span>
-                            <h3 className="font-bold text-neutral-800 text-sm mb-1">{cat.label}</h3>
-                            <p className="text-xs text-neutral-400">{cat.subtitle}</p>
+                            <h3 className="font-bold text-white text-sm mb-1">{cat.label}</h3>
+                            <p className="text-xs text-gray-400">{cat.subtitle}</p>
                         </Card>
                     ))}
                 </div>
