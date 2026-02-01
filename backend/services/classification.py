@@ -21,8 +21,12 @@ async def classify_issue(transcript: str, language: str) -> Dict[str, Any]:
     try:
         logger.info(f"Classifying issue from transcript: {transcript[:50]}...")
         
-        # Initialize OpenAI client
-        client = OpenAI(api_key=settings.openai_api_key)
+        # Initialize xAI (Grok) client
+        # Grok is API-compatible with OpenAI SDK
+        client = OpenAI(
+            api_key=settings.xai_api_key,
+            base_url=settings.xai_base_url
+        )
         
         # Build classification prompt
         prompt = f"""You are an IVR classification system. Analyze the following customer statement and classify it into ONE of these categories:
@@ -41,10 +45,27 @@ Respond ONLY with valid JSON in this exact format:
     "reasoning": "brief explanation"
 }}"""
 
-        # For MVP: Use GPT-3.5-turbo for fast classification
-        # TODO: Replace mock with actual API call
+        # For MVP: Use Grok for classification if key is present
+        if settings.xai_api_key and "your-grok-api-key" not in settings.xai_api_key:
+            try:
+                response = client.chat.completions.create(
+                    model=settings.xai_model,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.3,
+                    max_tokens=150
+                )
+                content = response.choices[0].message.content
+                # Handle potential markdown code blocks from LLM
+                content = content.replace("```json", "").replace("```", "").strip()
+                result = json.loads(content)
+                
+                logger.info(f"Grok classification result: {result}")
+                return result
+            except Exception as api_error:
+                logger.error(f"Grok API failed: {api_error}")
+                # Fall through to mock logic
         
-        # Mock classification based on keywords
+        # Mock classification based on keywords (Fallback)
         transcript_lower = transcript.lower()
         
         if any(word in transcript_lower for word in ["bill", "payment", "charge", "zyada", "paisa"]):
@@ -69,13 +90,6 @@ Respond ONLY with valid JSON in this exact format:
             "reasoning": f"Detected keywords related to {category}"
         }
         
-        # TODO: Actual OpenAI API call (commented for demo)
-        # response = client.chat.completions.create(
-        #     model="gpt-3.5-turbo",
-        #     messages=[{"role": "user", "content": prompt}],
-        #     temperature=0.3,
-        #     max_tokens=150
-        # )
         # result = json.loads(response.choices[0].message.content)
         
         logger.info(f"Issue classified: {result['category']} (confidence: {result['confidence']})")

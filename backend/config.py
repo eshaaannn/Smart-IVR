@@ -6,12 +6,13 @@ from typing import Dict, List
 class Settings(BaseSettings):
     """Application configuration settings."""
     
-    # Supabase
-    supabase_url: str = os.getenv("SUPABASE_URL", "")
-    supabase_key: str = os.getenv("SUPABASE_KEY", "")
+    # Supabase - Using PostgreSQL Connection String
+    database_url: str = os.getenv("DATABASE_URL", "")
     
-    # OpenAI
-    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
+    # xAI (Grok)
+    xai_api_key: str = os.getenv("XAI_API_KEY", "")
+    xai_base_url: str = "https://api.x.ai/v1"
+    xai_model: str = "grok-2-latest" 
     
     # Application
     confidence_threshold: float = float(os.getenv("CONFIDENCE_THRESHOLD", "0.6"))

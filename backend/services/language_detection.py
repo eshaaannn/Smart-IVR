@@ -8,7 +8,7 @@ async def detect_language(audio_url: str) -> Dict[str, Any]:
     """
     Detect language from audio.
     
-    For MVP: Uses OpenAI Whisper with language detection.
+    For MVP: Uses mock detection (Grok does not support audio yet).
     
     Args:
         audio_url: URL to audio file
@@ -17,8 +17,8 @@ async def detect_language(audio_url: str) -> Dict[str, Any]:
         Dict with detected language and confidence
     """
     try:
-        # TODO: Integrate with OpenAI Whisper API
-        # For demo, we'll use mock detection based on transcription
+        # Grok (xAI) does not support audio language detection.
+        # For demo, we'll use mock detection.
         
         logger.info(f"Detecting language for audio: {audio_url}")
         

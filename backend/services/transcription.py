@@ -1,6 +1,5 @@
 import logging
 import os
-from openai import OpenAI
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -20,11 +19,10 @@ async def transcribe_audio(audio_url: str, detected_language: str = None) -> str
     try:
         logger.info(f"Transcribing audio: {audio_url}")
         
-        # Initialize OpenAI client
-        client = OpenAI(api_key=settings.openai_api_key)
+        # Grok does not support audio transcription yet.
+        # Using Mock Mode for MVP.
         
-        # For MVP demo: Mock transcription
-        # In production, download audio and send to Whisper API
+        # In production, you would use Whisper API or another speech-to-text service.
         
         # Mock transcriptions based on common scenarios
         mock_transcripts = {
@@ -34,14 +32,6 @@ async def transcribe_audio(audio_url: str, detected_language: str = None) -> str
         }
         
         # Return mock transcript for demo
-        # TODO: Replace with actual Whisper API call:
-        # with open(audio_file_path, "rb") as audio_file:
-        #     transcript = client.audio.transcriptions.create(
-        #         model="whisper-1",
-        #         file=audio_file,
-        #         language=detected_language
-        #     )
-        #     return transcript.text
         
         transcript = mock_transcripts.get(
             detected_language.lower() if detected_language else "hindi",
