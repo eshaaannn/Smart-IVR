@@ -1,0 +1,12 @@
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+pydantic==2.10.0
+pydantic-settings==2.6.1
+python-dotenv==1.0.1
+supabase==2.10.0
+httpx==0.28.0
+python-multipart==0.0.17
+
+# AI/ML dependencies
+openai==1.58.1
+requests==2.32.3
