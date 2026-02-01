@@ -19,3 +19,7 @@ env/
 *.m4a
 ffmpeg_path.txt
 temp_*
+
+# Test Files
+test_*.py
+test_*.wav
