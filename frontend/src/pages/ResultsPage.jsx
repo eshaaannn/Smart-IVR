@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -8,32 +10,43 @@ import Card from '../components/shared/Card';
 import Button from '../components/shared/Button';
 import { ROUTES } from '../utils/constants';
 
-// Mock outcome generator
-const getMockResult = () => {
-    // 80% chance of success
-    const isSuccess = Math.random() > 0.2;
-    return {
-        category: isSuccess ? 'Internet Connectivity' : 'Unsure',
-        confidence: isSuccess ? Math.floor(Math.random() * (99 - 80) + 80) : Math.floor(Math.random() * (60 - 30) + 30),
-        department: isSuccess ? 'Technical Support' : 'General Inquiry',
-        waitTime: '2 min',
-        language: 'English'
-    };
-};
-
 export default function ResultsPage() {
     const navigate = useNavigate();
     const [result, setResult] = useState(null);
 
     useEffect(() => {
-        // Simulate fetching result from Session or API
-        const mockData = getMockResult();
-        setResult(mockData);
+        // Retrieve result from session storage (set by ProcessingPage)
+        const storedResult = sessionStorage.getItem('analysisResult');
+
+        if (storedResult) {
+            try {
+                const parsedResult = JSON.parse(storedResult);
+                setResult(parsedResult);
+            } catch (e) {
+                console.error("Failed to parse result", e);
+                // Fallback mock if parse fails
+                setResult({
+                    issue_category: 'technical_issue',
+                    confidence: 0.5,
+                    routing_to: 'Technical Support',
+                    waitTime: '5 min'
+                });
+            }
+        } else {
+            // Fallback mock if no result found
+            setResult({
+                category: 'Internet Connectivity',
+                confidence: 85,
+                department: 'Technical Support',
+                waitTime: '2 min',
+                language: 'English'
+            });
+        }
     }, []);
 
     const handleConfirm = () => {
         // In real app, this would route the call
-        alert(`Routing to ${result.department}...`);
+        alert(`Routing to ${result.routing_to || result.department}...`);
         navigate(ROUTES.HOME);
     };
 
@@ -47,7 +60,13 @@ export default function ResultsPage() {
 
     if (!result) return null;
 
-    const isHighConfidence = result.confidence > 70;
+    // Backend returns 'confidence' as 0.0-1.0 or 0-100. Let's normalize to 0-100.
+    const confidenceScore = result.confidence <= 1 ? Math.round(result.confidence * 100) : result.confidence;
+    const isHighConfidence = confidenceScore > 70;
+
+    // Normalize field names (backend uses 'issue_category', 'routing_to')
+    const categoryLabel = result.issue_category || result.category || 'Issue';
+    const departmentLabel = result.routing_to || result.department || 'Support';
 
     return (
         <AppLayout title="Analysis Complete" showBack={false}>
@@ -75,12 +94,12 @@ export default function ResultsPage() {
                     </motion.div>
 
                     <h2 className="text-2xl font-bold text-neutral-900 mb-2">
-                        {isHighConfidence ? 'Issue Identify!' : 'We need clarification'}
+                        {isHighConfidence ? 'Issue Identified!' : 'We need clarification'}
                     </h2>
                     <p className="text-neutral-500 mb-8 text-center max-w-xs">
                         {isHighConfidence
-                            ? `We've analyzed your voice input with ${result.confidence}% confidence.`
-                            : `We were only ${result.confidence}% sure about your request.`}
+                            ? `We've analyzed your voice input with ${confidenceScore}% confidence.`
+                            : `We were only ${confidenceScore}% sure about your request.`}
                     </p>
 
                     {/* Result Card */}
@@ -88,15 +107,15 @@ export default function ResultsPage() {
                         <div className="space-y-4">
                             <div className="flex justify-between items-center border-b border-neutral-100 pb-3">
                                 <span className="text-neutral-500 font-medium">Detected Issue</span>
-                                <span className="font-bold text-neutral-800">{result.category}</span>
+                                <span className="font-bold text-neutral-800 capitalize">{categoryLabel.replace('_', ' ')}</span>
                             </div>
                             <div className="flex justify-between items-center border-b border-neutral-100 pb-3">
                                 <span className="text-neutral-500 font-medium">Department</span>
-                                <span className="font-bold text-primary-600">{result.department}</span>
+                                <span className="font-bold text-primary-600">{departmentLabel}</span>
                             </div>
                             <div className="flex justify-between items-center">
                                 <span className="text-neutral-500 font-medium">Estimated Wait</span>
-                                <span className="font-bold text-success-600">{result.waitTime}</span>
+                                <span className="font-bold text-success-600">{result.waitTime || '2 min'}</span>
                             </div>
                         </div>
                     </Card>
