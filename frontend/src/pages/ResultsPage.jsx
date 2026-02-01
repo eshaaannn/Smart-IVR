@@ -13,10 +13,16 @@ import { ROUTES } from '../utils/constants';
 export default function ResultsPage() {
     const navigate = useNavigate();
     const [result, setResult] = useState(null);
+    const [transcript, setTranscript] = useState('');
 
     useEffect(() => {
-        // Retrieve result from session storage (set by ProcessingPage)
+        // Retrieve result and transcript from session storage
         const storedResult = sessionStorage.getItem('analysisResult');
+        const storedTranscript = sessionStorage.getItem('transcript');
+
+        if (storedTranscript) {
+            setTranscript(storedTranscript);
+        }
 
         if (storedResult) {
             try {
@@ -24,7 +30,7 @@ export default function ResultsPage() {
                 setResult(parsedResult);
             } catch (e) {
                 console.error("Failed to parse result", e);
-                // Fallback mock if parse fails
+                // Fallback mock
                 setResult({
                     issue_category: 'technical_issue',
                     confidence: 0.5,
@@ -33,7 +39,7 @@ export default function ResultsPage() {
                 });
             }
         } else {
-            // Fallback mock if no result found
+            // Fallback mock
             setResult({
                 category: 'Internet Connectivity',
                 confidence: 85,
@@ -64,9 +70,12 @@ export default function ResultsPage() {
     const confidenceScore = result.confidence <= 1 ? Math.round(result.confidence * 100) : result.confidence;
     const isHighConfidence = confidenceScore > 70;
 
-    // Normalize field names (backend uses 'issue_category', 'routing_to')
+    // Normalize field names
     const categoryLabel = result.issue_category || result.category || 'Issue';
     const departmentLabel = result.routing_to || result.department || 'Support';
+
+    // Display transcript as the issue if available, otherwise fallback to category
+    const displayIssue = transcript ? `"${transcript}"` : categoryLabel.replace('_', ' ');
 
     return (
         <AppLayout title="Analysis Complete" showBack={false}>
@@ -111,9 +120,9 @@ export default function ResultsPage() {
                         {/* Ensure dark background is explicit if theme-surface isn't working or overridden */}
                         <div className="absolute inset-0 bg-[#1B222F] z-0"></div>
                         <div className="relative z-10 space-y-4">
-                            <div className="flex justify-between items-center border-b border-white/5 pb-4">
-                                <span className="text-gray-400 font-medium text-sm">Detected Issue</span>
-                                <span className="font-bold text-white capitalize">{categoryLabel.replace('_', ' ')}</span>
+                            <div className="flex justify-between items-start border-b border-white/5 pb-4">
+                                <span className="text-gray-400 font-medium text-sm pt-1">Detected Issue</span>
+                                <span className="font-bold text-white text-right max-w-[60%] text-sm line-clamp-2 italic">{displayIssue}</span>
                             </div>
                             <div className="flex justify-between items-center border-b border-white/5 pb-4">
                                 <span className="text-gray-400 font-medium text-sm">Department</span>
