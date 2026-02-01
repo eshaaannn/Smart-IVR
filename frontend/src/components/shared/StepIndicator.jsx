@@ -12,11 +12,11 @@ const StepIndicator = ({ currentStep = 1 }) => {
         <div className="w-full py-4 px-6 mb-6">
             <div className="relative flex justify-between items-center max-w-xs mx-auto">
                 {/* Background Line */}
-                <div className="absolute top-1/2 left-0 w-full h-1 bg-neutral-200 -z-10 -translate-y-1/2 rounded-full"></div>
+                <div className="absolute top-1/2 left-0 w-full h-1 bg-gray-800 -z-10 -translate-y-1/2 rounded-full"></div>
 
                 {/* Progress Line */}
                 <motion.div
-                    className="absolute top-1/2 left-0 h-1 bg-primary-500 -z-10 -translate-y-1/2 rounded-full"
+                    className="absolute top-1/2 left-0 h-1 bg-blue-600 -z-10 -translate-y-1/2 rounded-full"
                     initial={{ width: '0%' }}
                     animate={{ width: `${((Math.min(currentStep, steps.length) - 1) / (steps.length - 1)) * 100}%` }}
                     transition={{ duration: 0.5, ease: "easeInOut" }}
@@ -32,11 +32,12 @@ const StepIndicator = ({ currentStep = 1 }) => {
                                 className={`
                   w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-colors duration-300
                   ${isActive
-                                        ? 'bg-primary-500 border-primary-500 text-white shadow-lg shadow-primary-500/30'
-                                        : 'bg-white border-neutral-300 text-neutral-400'
+                                        ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/30'
+                                        : 'bg-theme-surface border-gray-700 text-gray-500'
+                                    }
                                     }
                 `}
-                                animate={{ scale: isCurrent ? 1.1 : 1 }}
+                                animate={{ scale: 1 }}
                                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
                             >
                                 {isActive ? (
@@ -47,7 +48,7 @@ const StepIndicator = ({ currentStep = 1 }) => {
                                     step.id
                                 )}
                             </motion.div>
-                            <span className={`mt-2 text-xs font-medium ${isCurrent ? 'text-primary-600' : 'text-neutral-400'}`}>
+                            <span className={`mt-2 text-xs font-medium ${isCurrent ? 'text-blue-400' : 'text-gray-600'}`}>
                                 {step.label}
                             </span>
                         </div>

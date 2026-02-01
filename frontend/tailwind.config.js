@@ -19,6 +19,8 @@ export default {
                     800: '#313493',
                     900: '#282A7A',
                 },
+                'theme-dark': '#141A28',
+                'theme-surface': '#1B222F',
                 success: {
                     50: '#ECFDF5',
                     100: '#D1FAE5',
@@ -51,6 +53,7 @@ export default {
                 'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                 'fade-in': 'fadeIn 0.3s ease-in',
                 'slide-up': 'slideUp 0.3s ease-out',
+                'blob': 'blob 7s infinite',
             },
             keyframes: {
                 fadeIn: {
@@ -60,6 +63,12 @@ export default {
                 slideUp: {
                     '0%': { transform: 'translateY(10px)', opacity: '0' },
                     '100%': { transform: 'translateY(0)', opacity: '1' },
+                },
+                blob: {
+                    '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                    '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                    '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                    '100%': { transform: 'translate(0px, 0px) scale(1)' },
                 },
             },
         },

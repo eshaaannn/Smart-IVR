@@ -1,23 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import AppLayout from '../layouts/AppLayout';
-import VoiceRecorder from '../components/VoiceRecorder';
 import Button from '../components/shared/Button';
-import StepIndicator from '../components/shared/StepIndicator';
 import PageTransition from '../components/shared/PageTransition';
 import { ROUTES } from '../utils/constants';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 
 const LANGUAGES = [
-    { code: 'en-US', label: 'English', flag: '🇺🇸' },
-    { code: 'hi-IN', label: 'Hindi (हिंदी)', flag: '🇮🇳' },
-    { code: 'mr-IN', label: 'Marathi (मराठी)', flag: '' },
+    { code: 'en-US', label: 'English', flag: '🇺🇸', sub: 'Global' },
+    { code: 'hi-IN', label: 'Hindi', flag: '🇮🇳', sub: 'हिंदी' },
+    { code: 'mr-IN', label: 'Marathi', flag: '', sub: 'मराठी' },
 ];
 
 /**
  * Voice Input Page - Main entry point
- * User can record voice (with STT) or type text
+ * Dark Theme UI
  */
 export default function VoiceInputPage() {
     const navigate = useNavigate();
@@ -34,10 +32,6 @@ export default function VoiceInputPage() {
         stopListening,
         hasSupport
     } = useSpeechRecognition();
-
-    // Import audio recorder dynamically or assume it's available. 
-    // We need to import it at the top, let's assume it is imported.
-    // Wait, I need to add the import first.
 
     // Sync transcript with text input
     useEffect(() => {
@@ -63,7 +57,6 @@ export default function VoiceInputPage() {
                 startListening(selectedLang);
             } catch (e) {
                 console.error("Failed to start audio recorder", e);
-                // Fallback to just STT if audio recorder fails
                 startListening(selectedLang);
             }
         }
@@ -79,92 +72,132 @@ export default function VoiceInputPage() {
             setIsProcessing(true);
             setError('');
 
-            // If we have an audioBlob (recorded voice), upload it to get the URL
             let audioUrl = '';
             if (audioBlob) {
                 try {
-                    audioUrl = await uploadAudio(audioBlob);
+                    audioUrl = await import('../services/audioService').then(m => m.uploadAudio(audioBlob));
                     sessionStorage.setItem('audioUrl', audioUrl);
                 } catch (uploadError) {
                     console.error("Audio upload failed", uploadError);
-                    // If upload fails, we can either stop or try to proceed with just text (if backend allowed it)
-                    // For now, let's treat it as a hard error for Voice Flow
                     if (!textInput.trim()) {
                         throw new Error("Failed to upload voice recording");
                     }
                 }
             } else {
-                // Clear any previous audioUrl if this is a text-only attempt
                 sessionStorage.removeItem('audioUrl');
             }
 
-            // Store text for local reference
             sessionStorage.setItem('transcript', textInput);
             sessionStorage.setItem('language', selectedLang);
 
-            // Artificial delay to show "processing" state
             setTimeout(() => {
                 navigate(ROUTES.PROCESSING);
             }, 500);
 
         } catch (err) {
             console.error('Analysis error:', err);
-            setError('Failed to process your request. Please try again.');
+            setError('Failed to process. Please try again.');
             setIsProcessing(false);
         }
     };
 
     return (
-        <AppLayout title="Voice Assistant" showBack={false}>
+        <AppLayout title="Smart Assistant" showBack={false}>
             <PageTransition>
-                <StepIndicator currentStep={1} />
 
-                <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
-                    {/* Header */}
-                    <div className="text-center mb-6">
-                        <h1 className="text-3xl font-bold text-neutral-900 mb-2">
-                            Tell us what's going wrong
-                        </h1>
-                        <p className="text-neutral-600">
-                            Select your language and tap the microphone
-                        </p>
+                {/* Step Indicator on Secondary Surface */}
+                <div className="w-full bg-theme-surface rounded-full h-1 mb-8 overflow-hidden">
+                    <motion.div
+                        className="h-full bg-blue-500 rounded-full"
+                        initial={{ width: "0%" }}
+                        animate={{ width: "33%" }}
+                    />
+                </div>
+
+                <div className="flex flex-col h-full">
+
+                    {/* Content Column */}
+                    <div className="flex-1 flex flex-col justify-center items-center text-center space-y-8">
+                        <div>
+                            <h2 className="text-2xl font-bold text-white mb-3">
+                                How can we help?
+                            </h2>
+                            <p className="text-gray-400 text-sm max-w-xs mx-auto">
+                                Select your language and tap the microphone to explain your issue.
+                            </p>
+                        </div>
+
+                        {/* Language Selection - Cards on Secondary Surface */}
+                        <div className="w-full grid grid-cols-3 gap-3">
+                            {LANGUAGES.map((lang) => (
+                                <motion.button
+                                    key={lang.code}
+                                    onClick={() => setSelectedLang(lang.code)}
+                                    whileTap={{ scale: 0.95 }}
+                                    className={`
+                                        flex flex-col items-center justify-center py-4 rounded-2xl transition-all
+                                        ${selectedLang === lang.code
+                                            ? 'bg-blue-600 text-white ring-2 ring-blue-400/50'
+                                            : 'bg-theme-surface text-gray-300 hover:bg-theme-surface/80'}
+                                    `}
+                                >
+                                    {/* Only show flag if it exists, otherwise explicit empty or fallback logic without specific 'voice man' if undesired.
+                                        User said "remove the voice men icon".
+                                        If flag is empty (Marathi), we render nothing or just the label. */}
+                                    {lang.flag && <span className="text-2xl mb-2 grayscale opacity-80">{lang.flag}</span>}
+                                    {!lang.flag && <div className="h-2 mb-2"></div>}
+
+                                    <span className="text-xs font-semibold tracking-wide">
+                                        {lang.label}
+                                    </span>
+                                </motion.button>
+                            ))}
+                        </div>
                     </div>
 
-                    {/* Language Selector */}
-                    <div className="flex gap-2 mb-8 bg-white p-1 rounded-xl border border-neutral-200 shadow-sm">
-                        {LANGUAGES.map((lang) => (
-                            <button
-                                key={lang.code}
-                                onClick={() => setSelectedLang(lang.code)}
-                                className={`
-                                    px-4 py-2 rounded-lg text-sm font-medium transition-all
-                                    ${selectedLang === lang.code
-                                        ? 'bg-primary-50 text-primary-700 shadow-sm ring-1 ring-primary-200'
-                                        : 'text-neutral-600 hover:bg-neutral-50'}
-                                `}
-                            >
-                                <span className="mr-2">{lang.flag}</span>
-                                {lang.label}
-                            </button>
-                        ))}
-                    </div>
+                    {/* Primary Voice Interaction - Lower Middle */}
+                    <div className="flex-1 flex flex-col items-center justify-center py-8">
+                        <div className="relative w-48 h-48 flex items-center justify-center">
 
-                    {/* Voice Recorder Control */}
-                    <div className="mb-8 relative">
-                        {/* Custom pulsing UI handled inside VoiceRecorder, but we control logic here */}
-                        <div className="relative w-40 h-40 flex items-center justify-center">
-                            {isListening && (
-                                <motion.div
-                                    className="absolute inset-0 rounded-full bg-red-100"
-                                    animate={{ scale: [1, 1.5], opacity: [0.5, 0] }}
-                                    transition={{ duration: 1.5, repeat: Infinity }}
-                                />
-                            )}
-                            <button
+                            {/* Listening Radar Animation */}
+                            <AnimatePresence>
+                                {isListening && (
+                                    <>
+                                        {[...Array(3)].map((_, i) => (
+                                            <motion.div
+                                                key={i}
+                                                className="absolute inset-0 rounded-full border border-blue-500/30"
+                                                initial={{ scale: 1, opacity: 0.5, borderWidth: "1px" }}
+                                                animate={{
+                                                    scale: 2.5,
+                                                    opacity: 0,
+                                                    borderWidth: "0px"
+                                                }}
+                                                transition={{
+                                                    duration: 2.5,
+                                                    repeat: Infinity,
+                                                    delay: i * 0.8,
+                                                    ease: "anticipate"
+                                                }}
+                                            />
+                                        ))}
+                                        {/* Static Outer Rings for "Radar" look */}
+                                        <div className="absolute inset-0 rounded-full border border-theme-surface/30 scale-125"></div>
+                                        <div className="absolute inset-0 rounded-full border border-theme-surface/20 scale-150"></div>
+                                    </>
+                                )}
+                            </AnimatePresence>
+
+                            {/* Main Button */}
+                            <motion.button
                                 onClick={handleToggleRecording}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
                                 className={`
-                                    relative z-10 w-24 h-24 rounded-full flex items-center justify-center shadow-xl transition-all
-                                    ${isListening ? 'bg-red-500 hover:bg-red-600' : 'bg-primary-600 hover:bg-primary-700'}
+                                    relative z-20 w-24 h-24 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300
+                                    ${isListening
+                                        ? 'bg-red-500 shadow-red-500/20'
+                                        : 'bg-blue-600 shadow-blue-600/20'}
                                 `}
                             >
                                 <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -174,47 +207,34 @@ export default function VoiceInputPage() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                                     )}
                                 </svg>
-                            </button>
+                            </motion.button>
                         </div>
-                        <p className="text-center mt-4 text-sm font-medium text-neutral-500">
+
+                        <p className={`mt-6 text-sm font-medium tracking-wide ${isListening ? 'text-blue-400 animate-pulse' : 'text-gray-500'}`}>
                             {isListening ? 'Listening...' : 'Tap to Speak'}
                         </p>
                     </div>
 
-                    {/* Live Transcript / Text Input */}
-                    <div className="w-full max-w-md mb-6">
-                        <div className="relative">
-                            <textarea
-                                value={textInput}
-                                onChange={(e) => setTextInput(e.target.value)}
-                                placeholder="Or type your issue here..."
-                                className="w-full px-4 py-3 border border-neutral-300 rounded-2xl text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent shadow-sm min-h-[100px] resize-none"
-                            />
-                        </div>
+                    {/* Bottom Area - Text fallback */}
+                    <div className="w-full bg-theme-surface rounded-2xl p-1 mb-6 flex items-center">
+                        <input
+                            type="text"
+                            value={textInput}
+                            onChange={(e) => setTextInput(e.target.value)}
+                            placeholder="Type to explain..."
+                            className="flex-1 bg-transparent border-none text-white px-4 py-3 placeholder-gray-500 focus:ring-0 text-sm"
+                        />
+                        <button
+                            onClick={handleAnalyze}
+                            disabled={!textInput.trim() && !audioBlob}
+                            className="p-3 bg-blue-600 rounded-xl text-white disabled:opacity-50 disabled:bg-gray-700"
+                        >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                        </button>
                     </div>
 
-                    {/* Error Message */}
-                    {error && (
-                        <motion.div
-                            className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                        >
-                            {error}
-                        </motion.div>
-                    )}
-
-                    {/* Analyze Button */}
-                    <Button
-                        variant="primary"
-                        size="lg"
-                        onClick={handleAnalyze}
-                        isLoading={isProcessing}
-                        disabled={!textInput.trim()}
-                        className="w-full max-w-md shadow-xl shadow-primary-500/20"
-                    >
-                        {isProcessing ? 'Processing...' : 'Analyze Issue'}
-                    </Button>
                 </div>
             </PageTransition>
         </AppLayout>
