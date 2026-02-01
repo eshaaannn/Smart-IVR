@@ -6,6 +6,7 @@ import ProgressBar from '../components/shared/ProgressBar';
 import StepIndicator from '../components/shared/StepIndicator';
 import PageTransition from '../components/shared/PageTransition';
 import { ROUTES } from '../utils/constants';
+import { processIssue } from '../services/api';
 
 const PROCESSING_STEPS = [
     { label: 'Transcribing your voice...', duration: 2000 },
@@ -21,6 +22,55 @@ export default function ProcessingPage() {
 
     useEffect(() => {
         let mounted = true;
+
+        const analyzeAudio = async () => {
+            try {
+                // Get data from session
+                const audioUrl = sessionStorage.getItem('audioUrl');
+                const transcript = sessionStorage.getItem('transcript');
+
+                // If we have no data, go back home
+                if (!audioUrl && !transcript) {
+                    navigate(ROUTES.HOME);
+                    return;
+                }
+
+                // Start API call in background while animations play
+                // Note: The backend ONLY accepts audio_url. 
+                // If we only have text (transcript), we might need to handle this differently.
+                // For now, if we have an audioUrl, we send it.
+                // If not, we might be in a "Text Only" mode which the backend doesn't technically support yet.
+                // In that case, we might skip the API call or send a placeholder.
+
+                let result = null;
+                if (audioUrl) {
+                    result = await processIssue(audioUrl);
+                } else {
+                    // Fallback for Text-Input only scenario (since backend doesn't support text-only yet)
+                    // We mock the response based on the text input we have
+                    result = {
+                        language: sessionStorage.getItem('language') || 'en-US',
+                        transcript: transcript,
+                        issue_category: 'general_support', // We can't really know without backend
+                        confidence: 0.8,
+                        routing_to: 'General Support',
+                        fallback: false
+                    };
+                }
+
+                if (mounted && result) {
+                    // Store result for ResultsPage
+                    sessionStorage.setItem('analysisResult', JSON.stringify(result));
+                }
+            } catch (error) {
+                console.error("Processing failed", error);
+                // navigate(ROUTES.HOME); // Optional: handle error better
+            }
+        };
+
+        analyzeAudio();
+
+        // Animation Logic (Keep visual feedback for user)
         let stepStartTime = Date.now();
         let animationFrame;
 
@@ -43,9 +93,9 @@ export default function ProcessingPage() {
                     stepStartTime = Date.now();
                     animationFrame = requestAnimationFrame(animateProgress);
                 } else {
-                    // All steps complete
+                    // All steps complete - Navigate to Results
                     setTimeout(() => {
-                        navigate(ROUTES.RESULTS);
+                        if (mounted) navigate(ROUTES.RESULTS);
                     }, 500);
                 }
             }
